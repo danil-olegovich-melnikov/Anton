@@ -4,7 +4,8 @@ from django.utils.translation import gettext_lazy as _
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-j_-1h-)7nti1m@s_6walr*9@kwmegku0%onk1yd6xzqxp6=m_k'
 DEBUG = True
-ALLOWED_HOSTS = []
+
+ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
