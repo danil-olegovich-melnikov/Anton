@@ -5,6 +5,7 @@ from django.contrib import admin
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from photo.views import create_payment_view
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -24,6 +25,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('photo.urls')),
     path('', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path("pay/", create_payment_view, name="create_payment"),
 ]
 
 if settings.DEBUG:
