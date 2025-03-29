@@ -22,3 +22,20 @@ class Photo(models.Model):
 
     def __str__(self):
         return f'Фото {self.id} на {self.date}'
+
+
+class Client(models.Model):
+    email = models.EmailField("Почта", unique=True)
+
+
+class Payment(models.Model):
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, verbose_name="Клиент")
+    url = models.CharField("Ссылка на оплату", max_length=256)
+
+
+class Order(models.Model):
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, verbose_name="Оплата")
+    photo = models.ForeignKey(Photo, on_delete=models.CASCADE, verbose_name="Фотография")
+
+
+
