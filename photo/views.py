@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter
-
+from django.shortcuts import redirect
 
 class DateListAPIView(generics.ListAPIView):
     queryset = Date.objects.all()
@@ -23,7 +23,8 @@ class DateListAPIView(generics.ListAPIView):
 Configuration.account_id = settings.YOOKASSA_SHOP_ID
 Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 
-def create_payment(amount, return_url, email):
+
+def create_payment(host, amount, email):
     order_id = uuid.uuid4()
     payment = Ypayment.create({
         "amount": {
@@ -33,19 +34,19 @@ def create_payment(amount, return_url, email):
         "capture": True,
         "confirmation": {
             "type": "redirect",
-            "return_url": return_url
+            "return_url": f"http://{host}/api/payment_success/{order_id}/"
         },
         "description": f"Оплата заказа: {email}",
         "metadata": {
             "order_id": str(order_id)
         }
     })
+    print(f"{host}/api/payment_success/{order_id}/")
     return payment.confirmation.confirmation_url, order_id
 
 
 def create_payment_view(request):
     amount = request.GET.get("amount", 1000)
-    return_url = request.GET.get("return_url", "https://example.com/success")
     email = request.GET.get("email", "")
     pk_photos = request.GET.get("photos", "")
 
@@ -72,7 +73,7 @@ def create_payment_view(request):
         return HttpResponse(f'Не правильно указана сумма, должно быть {price} рублей')
 
     client = Client.objects.get_or_create(email=email)[0]
-    payment_url, order_id = create_payment(amount, return_url, email)
+    payment_url, order_id = create_payment(request.get_host(), amount, email)
     payment = Payment.objects.create(client=client, url=payment_url, order_id=order_id)
     for photo in photos:
         Order.objects.create(payment=payment, photo=photo)
@@ -96,7 +97,17 @@ def payment_webhook(request):
     return JsonResponse({"status": "ok"})
 
 
-
+@csrf_exempt
+def payment_success(request, order_id):
+    print(order_id)
+    if Payment.objects.filter(order_id = order_id).exists():
+        payment = Payment.objects.get(order_id=order_id)
+        payment.is_paid = True
+        payment.save()
+        print(f"Платёж прошел успешно! Order ID: {order_id}")
+    else:
+        print('Ошибка')
+    return redirect('http://localhost:3000')
 
 
 class PaymentListView(generics.ListAPIView):
