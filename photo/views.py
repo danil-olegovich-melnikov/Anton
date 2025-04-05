@@ -72,7 +72,7 @@ def create_payment_view(request):
         return HttpResponse(f'Не правильно указана сумма, должно быть {price} рублей')
 
     client = Client.objects.get_or_create(email=email)[0]
-    payment_url, order_id = create_payment(amount, return_url, email), order_id
+    payment_url, order_id = create_payment(amount, return_url, email)
     payment = Payment.objects.create(client=client, url=payment_url, order_id=order_id)
     for photo in photos:
         Order.objects.create(payment=payment, photo=photo)
