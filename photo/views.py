@@ -82,16 +82,17 @@ def create_payment_view(request):
 
 @csrf_exempt
 def payment_webhook(request):
-    payload = json.loads(request.body)
-    if payload.get("event") == "payment.succeeded":
-        order_id = payload["object"]["metadata"]["order_id"]
-        if Payment.objects.filter(order_id == order_id).exists():
-            payment = Payment.objects.get(order_id == order_id)
-            payment.is_paid = True
-            payment.save()
-            print(f"Платёж прошел успешно! Order ID: {order_id}")
-        else:
-            print('Ошибка')
+    if request.body:   
+        payload = json.loads(request.body)
+        if payload.get("event") == "payment.succeeded":
+            order_id = payload["object"]["metadata"]["order_id"]
+            if Payment.objects.filter(order_id == order_id).exists():
+                payment = Payment.objects.get(order_id == order_id)
+                payment.is_paid = True
+                payment.save()
+                print(f"Платёж прошел успешно! Order ID: {order_id}")
+            else:
+                print('Ошибка')
     return JsonResponse({"status": "ok"})
 
 
