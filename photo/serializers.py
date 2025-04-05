@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Date, Photo
+from .models import Date, Photo, Order, Payment
 
 class PhotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,3 +17,18 @@ class DateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Date
         fields = ['id', 'date', 'photos']
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    photo = PhotoSerializer()
+    
+    class Meta:
+        model = Order
+        fields = ['id', 'photo']
+
+class PaymentSerializer(serializers.ModelSerializer):
+    orders = OrderSerializer(many=True, read_only=True, source='order_set')
+    
+    class Meta:
+        model = Payment
+        fields = ['id', 'client', 'url', 'is_paid', 'orders']
