@@ -1,6 +1,6 @@
 from rest_framework import generics
 from .models import Date, Photo, Payment, Order, Client
-from .serializers import DateSerializer
+from .serializers import DateSerializer, PaymentSerializer
 import uuid
 from django.conf import settings
 from yookassa import Payment as Ypayment
@@ -9,6 +9,8 @@ from django.shortcuts import HttpResponse
 import json
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.filters import SearchFilter
 
 
 class DateListAPIView(generics.ListAPIView):
@@ -22,6 +24,7 @@ Configuration.account_id = settings.YOOKASSA_SHOP_ID
 Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
 
 def create_payment(amount, return_url, email):
+    order_id = uuid.uuid4()
     payment = Ypayment.create({
         "amount": {
             "value": str(amount),
@@ -34,10 +37,10 @@ def create_payment(amount, return_url, email):
         },
         "description": f"Оплата заказа: {email}",
         "metadata": {
-            "order_id": str(uuid.uuid4())
+            "order_id": str(order_id)
         }
     })
-    return payment.confirmation.confirmation_url
+    return payment.confirmation.confirmation_url, order_id
 
 
 def create_payment_view(request):
@@ -69,8 +72,8 @@ def create_payment_view(request):
         return HttpResponse(f'Не правильно указана сумма, должно быть {price} рублей')
 
     client = Client.objects.get_or_create(email=email)[0]
-    payment_url = create_payment(amount, return_url, email)
-    payment = Payment.objects.create(client=client, url=payment_url)
+    payment_url, order_id = create_payment(amount, return_url, email), order_id
+    payment = Payment.objects.create(client=client, url=payment_url, order_id=order_id)
     for photo in photos:
         Order.objects.create(payment=payment, photo=photo)
 
@@ -82,5 +85,28 @@ def payment_webhook(request):
     payload = json.loads(request.body)
     if payload.get("event") == "payment.succeeded":
         order_id = payload["object"]["metadata"]["order_id"]
-        print(f"Платёж прошел успешно! Order ID: {order_id}")
+        if Payment.objects.filter(order_id == order_id).exists():
+            payment = Payment.objects.get(order_id == order_id)
+            payment.is_paid = True
+            payment.save()
+            print(f"Платёж прошел успешно! Order ID: {order_id}")
+        else:
+            print('Ошибка')
     return JsonResponse({"status": "ok"})
+
+
+
+
+
+class PaymentListView(generics.ListAPIView):
+    serializer_class = PaymentSerializer
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['client__email']
+    
+    def get_queryset(self):
+        email = self.request.query_params.get('search', None)
+        if email:
+            return Payment.objects.filter(client__email=email)
+        return Payment.objects.none()
+
+
