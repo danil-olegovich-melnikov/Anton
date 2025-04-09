@@ -99,7 +99,6 @@ def payment_webhook(request):
 
 @csrf_exempt
 def payment_success(request, order_id):
-    print(order_id)
     if Payment.objects.filter(order_id = order_id).exists():
         payment = Payment.objects.get(order_id=order_id)
         payment.is_paid = True
@@ -118,7 +117,7 @@ class PaymentListView(generics.ListAPIView):
     def get_queryset(self):
         email = self.request.query_params.get('search', None)
         if email:
-            return Payment.objects.filter(client__email=email)
+            return Payment.objects.filter(client__email=email, is_paid=True)
         return Payment.objects.none()
 
 

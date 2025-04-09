@@ -1,4 +1,7 @@
+import shutil
 from django.db import models
+import os
+from PIL import Image
 
 class Date(models.Model):
     date = models.DateField(verbose_name='Дата')
@@ -10,11 +13,42 @@ class Date(models.Model):
     def __str__(self):
         return self.date.strftime('%Y-%m-%d')
 
+def upload_to(instance, filename):
+    # Временный путь для фото до получения ID
+    return f'temp/{filename}'
 
 class Photo(models.Model):
-    date = models.ForeignKey(Date, on_delete=models.CASCADE, verbose_name='Дата')
-    photo = models.ImageField('Фото', upload_to='photos/')
+    date = models.ForeignKey('Date', on_delete=models.CASCADE, verbose_name='Дата')
+    photo = models.ImageField('Фото', upload_to=upload_to)
     price = models.PositiveSmallIntegerField('Цена')
+    watermark = models.ImageField('Защищенное фото', upload_to='', editable=False, blank=True)
+
+    def save(self, *args, **kwargs):
+        is_new = not self.pk
+        temp_name = self.photo.name
+
+        super().save(*args, **kwargs)
+        if is_new and 'temp/' in self.photo.path:
+            ext = os.path.splitext(temp_name)[1]
+            folder_date = self.date.date.isoformat()
+            new_dir = f'{folder_date}/{self.id}'
+            new_path = f'media/{new_dir}/origin{ext}'
+            watermark_path = new_path.replace('origin', 'watermark')
+            os.makedirs(os.path.dirname(new_path), exist_ok=True)
+
+            shutil.move(self.photo.path, new_path)
+            shutil.copy(new_path, watermark_path)
+            self.photo.name = new_path[6:]
+            self.watermark.name = watermark_path[6:]
+
+            
+
+            image = Image.open(watermark_path)
+            image.thumbnail((300, 200))
+            image.save(watermark_path)
+            super().save(update_fields=['photo', 'watermark'])
+
+
 
     class Meta:
         verbose_name = 'Фотография'

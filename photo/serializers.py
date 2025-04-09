@@ -2,6 +2,19 @@ from rest_framework import serializers
 from .models import Date, Photo
 
 class PhotoSerializer(serializers.ModelSerializer):
+    photo = serializers.SerializerMethodField()
+    
+    def get_photo(self, obj):
+        request = self.context.get('request')
+        if request is not None:
+            return request.build_absolute_uri(obj.watermark.url)
+        return obj.watermark.url
+    
+    class Meta:
+        model = Photo
+        fields = ['id', 'photo', 'price']
+
+class PhotoSerializerOrigin(serializers.ModelSerializer):
     class Meta:
         model = Photo
         fields = ['id', 'photo', 'price']
@@ -20,10 +33,6 @@ class DateSerializer(serializers.ModelSerializer):
 from rest_framework import serializers
 from .models import Date, Photo, Order, Payment
 
-class PhotoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Photo
-        fields = ['id', 'photo', 'price']
 
 class DateSerializer(serializers.ModelSerializer):
     photos = PhotoSerializer(many=True, read_only=True, source='photo_set')
@@ -38,7 +47,7 @@ class DateSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    photo = PhotoSerializer()
+    photo = PhotoSerializerOrigin()
     
     class Meta:
         model = Order
