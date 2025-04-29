@@ -69,3 +69,5 @@ ehthumbs.db
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+media/*

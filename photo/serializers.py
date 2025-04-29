@@ -46,6 +46,11 @@ class DateSerializer(serializers.ModelSerializer):
         fields = ['id', 'date', 'photos']
 
 
+class PhotoSerializerOrigin(serializers.ModelSerializer):
+    class Meta:
+        model = Photo
+        fields = ['id', 'photo', 'price']
+
 class OrderSerializer(serializers.ModelSerializer):
     photo = PhotoSerializerOrigin()
     
@@ -55,7 +60,11 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class PaymentSerializer(serializers.ModelSerializer):
     orders = OrderSerializer(many=True, read_only=True, source='order_set')
+    total = serializers.SerializerMethodField()
+
+    def get_total(self, obj):
+        return sum(order.photo.price for order in obj.order_set.all() if order.photo and order.photo.price)
     
     class Meta:
         model = Payment
-        fields = ['id', 'client', 'url', 'is_paid', 'orders']
+        fields = ['id', 'client', 'url', 'date', 'total', 'is_paid', 'orders']
